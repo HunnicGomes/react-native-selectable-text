@@ -130,8 +130,22 @@ using namespace facebook::react;
     // The text content will be accessible through the component hierarchy
 }
 
+// Recursively unhide all child views. This is necessary because we previously set
+// view.hidden = YES when extracting text. If we don't revert this, React Native's
+// Fabric view recycling pool will reuse these hidden views elsewhere in the app,
+// causing text to randomly disappear.
+- (void)unhideAllViews:(UIView *)view
+{
+    view.hidden = NO;
+    for (UIView *subview in view.subviews) {
+        [self unhideAllViews:subview];
+    }
+}
+
 - (void)unmountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index
 {
+    // Ensure all views are visible again before returning them to the recycling pool
+    [self unhideAllViews:childComponentView];
     [super unmountChildComponentView:childComponentView index:index];
 }
 

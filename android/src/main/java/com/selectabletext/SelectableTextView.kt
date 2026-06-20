@@ -5,6 +5,8 @@ import android.util.AttributeSet
 import android.view.ActionMode
 import android.view.Menu
 import android.view.MenuItem
+import android.view.View
+import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.TextView
 import com.facebook.react.bridge.Arguments
@@ -29,6 +31,16 @@ class SelectableTextView : FrameLayout {
     setupTextView()
   }
   
+  // Hook the child view as soon as it is added by React Native.
+  // This eliminates timing issues where children are not yet attached during setup.
+  override fun addView(child: View?, index: Int, params: ViewGroup.LayoutParams?) {
+    super.addView(child, index, params)
+    if (child is TextView) {
+      textView = child
+      setupSelectionCallback(child)
+    }
+  }
+  
   private fun setupTextView() {
     // Find the first TextView child
     for (i in 0 until childCount) {
@@ -42,7 +54,11 @@ class SelectableTextView : FrameLayout {
   }
   
   private fun setupSelectionCallback(textView: TextView) {
-    textView.setTextIsSelectable(true)
+    // Only call setTextIsSelectable if it is not already selectable.
+    // This avoids triggering unnecessary native layout requests.
+    if (!textView.isTextSelectable) {
+      textView.setTextIsSelectable(true)
+    }
     textView.customSelectionActionModeCallback = object : ActionMode.Callback {
       override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
         return true
@@ -87,11 +103,30 @@ class SelectableTextView : FrameLayout {
       .getJSModule(DeviceEventManagerModule.RCTDeviceEventEmitter::class.java)
       .emit("SelectableTextSelection", params)
   }
+
+  // Override onMeasure to directly set dimensions from React Native (Yoga).
+  // We do not call super.onMeasure() because FrameLayout's native measurement pass
+  // would measure the child TextView using Android's standard specifications (often 0 or unspecified),
+  // causing it to cache a tiny width and render text vertically (single-character wrapping).
+  override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
+    val widthSize = MeasureSpec.getSize(widthMeasureSpec)
+    val heightSize = MeasureSpec.getSize(heightMeasureSpec)
+    setMeasuredDimension(widthSize, heightSize)
+  }
   
+  // Override onLayout as a no-op (except for setting up the child ref if needed).
+  // We do not call super.onLayout() because child views are positioned directly by Yoga
+  // via child.layout() calls, and FrameLayout's layout pass would override this.
   override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
-    super.onLayout(changed, left, top, right, bottom)
     if (changed && textView == null) {
       setupTextView()
     }
+  }
+
+  // Override requestLayout to prevent native layout requests from bubbling up.
+  // Changes to selection state on standard TextViews trigger native layout passes,
+  // which will collapse/override Yoga's layout calculations if not suppressed.
+  override fun requestLayout() {
+    // No-op: Prevent native layout requests from interfering with Yoga's layout tree.
   }
 }
