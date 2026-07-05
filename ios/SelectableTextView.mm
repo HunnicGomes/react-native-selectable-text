@@ -59,6 +59,7 @@ using namespace facebook::react;
 
 @implementation SelectableTextView {
     std::vector<std::string> _menuOptionsVector;
+    NSDictionary<NSString *, NSString *> *_menuOptionSelectors;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -114,10 +115,22 @@ using namespace facebook::react;
         _menuOptionsVector = newViewProps.menuOptions;
         
         NSMutableArray<NSString *> *options = [[NSMutableArray alloc] init];
-        for (const auto& option : _menuOptionsVector) {
-            [options addObject:[NSString stringWithUTF8String:option.c_str()]];
+        NSMutableDictionary<NSString *, NSString *> *selectors = [[NSMutableDictionary alloc] init];
+
+        for (const auto& opt : _menuOptionsVector) {
+            NSString *option = [NSString stringWithUTF8String:opt.c_str()];
+            [options addObject:option];
+
+            // Pre-compute the valid selector name (replace spaces and special chars with underscores)
+            NSString *selectorName = [[option stringByReplacingOccurrencesOfString:@" " withString:@"_"]
+                                                    stringByReplacingOccurrencesOfString:@"[^a-zA-Z0-9_]"
+                                                    withString:@"_"
+                                                    options:NSRegularExpressionSearch
+                                                    range:NSMakeRange(0, option.length)];
+            selectors[option] = selectorName;
         }
         _menuOptions = options;
+        _menuOptionSelectors = selectors;
     }
 
     [super updateProps:props oldProps:oldProps];
@@ -439,11 +452,9 @@ using namespace facebook::react;
     
     for (NSString *option in _menuOptions) {
         // Convert option to valid selector name (replace spaces and special chars with underscores)
-        NSString *selectorName = [[option stringByReplacingOccurrencesOfString:@" " withString:@"_"] 
-                                                stringByReplacingOccurrencesOfString:@"[^a-zA-Z0-9_]" 
-                                                withString:@"_" 
-                                                options:NSRegularExpressionSearch 
-                                                range:NSMakeRange(0, option.length)];
+        NSString *selectorName = _menuOptionSelectors[option];
+        if (!selectorName) continue; // Fallback in case of mismatch
+
         SEL action = NSSelectorFromString([NSString stringWithFormat:@"customAction_%@:", selectorName]);
         UIMenuItem *menuItem = [[UIMenuItem alloc] initWithTitle:option action:action];
         [menuItems addObject:menuItem];
@@ -528,11 +539,7 @@ using namespace facebook::react;
         // Find the original option that matches this cleaned selector
         NSString *originalOption = nil;
         for (NSString *option in _menuOptions) {
-            NSString *testSelectorName = [[option stringByReplacingOccurrencesOfString:@" " withString:@"_"] 
-                                                    stringByReplacingOccurrencesOfString:@"[^a-zA-Z0-9_]" 
-                                                    withString:@"_" 
-                                                    options:NSRegularExpressionSearch 
-                                                    range:NSMakeRange(0, option.length)];
+            NSString *testSelectorName = _menuOptionSelectors[option];
             if ([testSelectorName isEqualToString:cleanedOption]) {
                 originalOption = option;
                 break;
