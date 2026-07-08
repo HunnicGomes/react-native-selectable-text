@@ -48,10 +48,6 @@ export const SelectableTextView: React.FC<SelectableTextViewProps> = ({
   // iOS: Use DirectEventHandler (current approach)
   const handleSelection = (event: NativeSyntheticEvent<SelectionEvent>) => {
     if (Platform.OS === 'ios' && onSelection) {
-      console.log(
-        'SelectableTextView - Direct event received:',
-        event.nativeEvent
-      );
       onSelection(event.nativeEvent);
     }
   };
