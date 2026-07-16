@@ -9,12 +9,6 @@
 
 using namespace facebook::react;
 
-#ifdef DEBUG
-#define STLog(...) NSLog(__VA_ARGS__)
-#else
-#define STLog(...) do {} while (0)
-#endif
-
 @class SelectableTextView;
 
 @interface SelectableUITextView : UITextView
@@ -54,7 +48,6 @@ using namespace facebook::react;
 // Override copy to prevent default behavior on the text view itself
 - (void)copy:(id)sender
 {
-    STLog(@"iOS SelectableText - SelectableUITextView copy: called, but blocked");
     // Do nothing - this prevents the default copy action
 }
 
@@ -76,7 +69,6 @@ using namespace facebook::react;
 - (instancetype)initWithFrame:(CGRect)frame
 {
   if (self = [super initWithFrame:frame]) {
-    STLog(@"iOS SelectableText - initWithFrame called: %@", NSStringFromCGRect(frame));
     
     static const auto defaultProps = std::make_shared<const SelectableTextViewProps>();
     _props = defaultProps;
@@ -105,7 +97,6 @@ using namespace facebook::react;
     // Make sure the container can become first responder
     self.userInteractionEnabled = YES;
     
-    STLog(@"iOS SelectableText - initialization complete");
   }
 
   return self;
@@ -191,25 +182,21 @@ using namespace facebook::react;
     // Recursively extract styled text from all child views and hide them
     [self extractStyledTextFromView:self intoAttributedString:combinedAttributedText hideViews:YES];
     
-    STLog(@"iOS SelectableText - Extracted styled text: '%@' (length: %lu)", combinedAttributedText.string, (unsigned long)combinedAttributedText.length);
     
     // Always update the text view with styled text
     _textView.attributedText = combinedAttributedText;
     
     // Log the final text view content
-    STLog(@"iOS SelectableText - TextView text: '%@'", _textView.text);
 }
 
 - (void)extractTextFromView:(UIView *)view intoString:(NSMutableString *)textString hideViews:(BOOL)hideViews
 {
-    STLog(@"iOS SelectableText - Checking view: %@ (class: %@)", view, [view class]);
     
     BOOL foundText = NO;
     
     // Look for UILabel (which React Native Text components become)
     if ([view isKindOfClass:[UILabel class]]) {
         UILabel *label = (UILabel *)view;
-        STLog(@"iOS SelectableText - Found UILabel with text: '%@'", label.text);
         if (label.text && label.text.length > 0) {
             [textString appendString:label.text];
             foundText = YES;
@@ -220,7 +207,6 @@ using namespace facebook::react;
         NSAttributedString *attributedText = [view performSelector:@selector(attributedText)];
         if (attributedText && attributedText.length > 0) {
             NSString *text = attributedText.string;
-            STLog(@"iOS SelectableText - Found attributed text: '%@'", text);
             [textString appendString:text];
             foundText = YES;
         }
@@ -229,7 +215,6 @@ using namespace facebook::react;
     else if ([view respondsToSelector:@selector(text)]) {
         NSString *text = [view performSelector:@selector(text)];
         if (text && text.length > 0) {
-            STLog(@"iOS SelectableText - Found text view with text: '%@'", text);
             [textString appendString:text];
             foundText = YES;
         }
@@ -237,12 +222,10 @@ using namespace facebook::react;
     
     // Hide the view if it contains text and we're asked to hide views
     if (foundText && hideViews) {
-        STLog(@"iOS SelectableText - Hiding text view: %@", view);
         view.hidden = YES;
     }
     
     // Recursively check child views
-    STLog(@"iOS SelectableText - View has %lu subviews", (unsigned long)view.subviews.count);
     for (UIView *subview in view.subviews) {
         // Skip the textView itself to avoid infinite recursion
         if (subview != _textView) {
@@ -253,7 +236,6 @@ using namespace facebook::react;
 
 - (void)extractStyledTextFromView:(UIView *)view intoAttributedString:(NSMutableAttributedString *)attributedString hideViews:(BOOL)hideViews
 {
-    STLog(@"iOS SelectableText - Checking styled view: %@ (class: %@)", view, [view class]);
     
     BOOL foundText = NO;
     
@@ -261,7 +243,6 @@ using namespace facebook::react;
     if ([view respondsToSelector:@selector(attributedText)]) {
         NSAttributedString *attributedText = [view performSelector:@selector(attributedText)];
         if (attributedText && attributedText.length > 0) {
-            STLog(@"iOS SelectableText - Found styled attributed text: '%@'", attributedText.string);
             [attributedString appendAttributedString:attributedText];
             foundText = YES;
         }
@@ -270,7 +251,6 @@ using namespace facebook::react;
     else if ([view isKindOfClass:[UILabel class]]) {
         UILabel *label = (UILabel *)view;
         if (label.attributedText && label.attributedText.length > 0) {
-            STLog(@"iOS SelectableText - Found styled UILabel: '%@'", label.attributedText.string);
             [attributedString appendAttributedString:label.attributedText];
             foundText = YES;
         } else if (label.text && label.text.length > 0) {
@@ -284,7 +264,6 @@ using namespace facebook::react;
     else if ([view respondsToSelector:@selector(text)]) {
         NSString *text = [view performSelector:@selector(text)];
         if (text && text.length > 0) {
-            STLog(@"iOS SelectableText - Found plain text view: '%@'", text);
             NSAttributedString *plainText = [[NSAttributedString alloc] initWithString:text];
             [attributedString appendAttributedString:plainText];
             foundText = YES;
@@ -293,12 +272,10 @@ using namespace facebook::react;
     
     // Hide the view if it contains text and we're asked to hide views
     if (foundText && hideViews) {
-        STLog(@"iOS SelectableText - Hiding styled text view: %@", view);
         view.hidden = YES;
     }
     
     // Recursively check child views
-    STLog(@"iOS SelectableText - Styled view has %lu subviews", (unsigned long)view.subviews.count);
     for (UIView *subview in view.subviews) {
         // Skip the textView itself to avoid infinite recursion
         if (subview != _textView) {
@@ -309,19 +286,16 @@ using namespace facebook::react;
 
 - (void)touchesBegan:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    STLog(@"iOS SelectableText - touchesBegan called");
     [super touchesBegan:touches withEvent:event];
 }
 
 - (void)touchesEnded:(NSSet<UITouch *> *)touches withEvent:(UIEvent *)event
 {
-    STLog(@"iOS SelectableText - touchesEnded called");
     
     // Try to manually trigger text selection
     UITouch *touch = [touches anyObject];
     if (touch) {
         CGPoint location = [touch locationInView:_textView];
-        STLog(@"iOS SelectableText - Touch at: %@", NSStringFromCGPoint(location));
         
         // Trigger manual selection on long press
         static NSTimeInterval lastTouchTime = 0;
@@ -338,11 +312,9 @@ using namespace facebook::react;
 
 - (void)handleManualSelection:(CGPoint)location
 {
-    STLog(@"iOS SelectableText - Handling manual selection at: %@", NSStringFromCGPoint(location));
     
     // Check if location is within text bounds
     if (!CGRectContainsPoint(_textView.bounds, location)) {
-        STLog(@"iOS SelectableText - Touch outside text bounds");
         return;
     }
     
@@ -354,7 +326,6 @@ using namespace facebook::react;
                                                                      inDirection:UITextLayoutDirectionRight];
         if (wordRange) {
             _textView.selectedTextRange = wordRange;
-            STLog(@"iOS SelectableText - Selected word range");
             
             // Make sure text view becomes first responder
             [_textView becomeFirstResponder];
@@ -362,21 +333,14 @@ using namespace facebook::react;
             // Show custom menu
             if (_menuOptions.count > 0) {
                 [self showCustomMenu];
-            } else {
-                STLog(@"iOS SelectableText - No menu options configured");
             }
-        } else {
-            STLog(@"iOS SelectableText - Could not create word range");
         }
-    } else {
-        STLog(@"iOS SelectableText - Could not find text position");
     }
 }
 
 - (void)handleLongPress:(UILongPressGestureRecognizer *)gestureRecognizer
 {
     if (gestureRecognizer.state == UIGestureRecognizerStateBegan) {
-        STLog(@"iOS SelectableText - Long press detected on %@", gestureRecognizer.view);
         
         // Convert location to textView coordinates if needed
         CGPoint location;
@@ -387,12 +351,10 @@ using namespace facebook::react;
             location = [self convertPoint:location toView:_textView];
         }
         
-        STLog(@"iOS SelectableText - Touch location: %@", NSStringFromCGPoint(location));
         
         // Check if location is within text bounds
         CGRect textBounds = _textView.bounds;
         if (!CGRectContainsPoint(textBounds, location)) {
-            STLog(@"iOS SelectableText - Touch outside text bounds");
             return;
         }
         
@@ -405,7 +367,6 @@ using namespace facebook::react;
                                                                          inDirection:UITextLayoutDirectionRight];
             if (wordRange) {
                 _textView.selectedTextRange = wordRange;
-                STLog(@"iOS SelectableText - Selected word range");
                 
                 // Make sure text view becomes first responder
                 [_textView becomeFirstResponder];
@@ -413,14 +374,8 @@ using namespace facebook::react;
                 // Show custom menu
                 if (_menuOptions.count > 0) {
                     [self showCustomMenu];
-                } else {
-                    STLog(@"iOS SelectableText - No menu options configured");
                 }
-            } else {
-                STLog(@"iOS SelectableText - Could not create word range");
             }
-        } else {
-            STLog(@"iOS SelectableText - Could not find text position");
         }
     }
 }
@@ -429,12 +384,8 @@ using namespace facebook::react;
 
 - (void)textViewDidChangeSelection:(UITextView *)textView
 {
-    STLog(@"iOS SelectableText - Selection changed: location=%lu, length=%lu",
-          (unsigned long)textView.selectedRange.location, 
-          (unsigned long)textView.selectedRange.length);
     
     if (textView.selectedRange.length > 0 && _menuOptions.count > 0) {
-        STLog(@"iOS SelectableText - Showing custom menu with %lu options", (unsigned long)_menuOptions.count);
         // Delay showing menu to ensure selection is established
         dispatch_async(dispatch_get_main_queue(), ^{
             [self showCustomMenu];
@@ -447,11 +398,9 @@ using namespace facebook::react;
 
 - (void)showCustomMenu
 {
-    STLog(@"iOS SelectableText - showCustomMenu called");
     
     // Ensure text view can become first responder
     if (![_textView canBecomeFirstResponder]) {
-        STLog(@"iOS SelectableText - textView cannot become first responder");
         return;
     }
     
@@ -472,31 +421,23 @@ using namespace facebook::react;
         SEL action = NSSelectorFromString([NSString stringWithFormat:@"customAction_%@:", selectorName]);
         UIMenuItem *menuItem = [[UIMenuItem alloc] initWithTitle:option action:action];
         [menuItems addObject:menuItem];
-        STLog(@"iOS SelectableText - Added menu item: %@ with selector: customAction_%@:", option, selectorName);
     }
     
     menuController.menuItems = menuItems;
     
-    STLog(@"iOS SelectableText - Final menu items count: %lu", (unsigned long)menuItems.count);
-    for (UIMenuItem *item in menuItems) {
-        STLog(@"iOS SelectableText - Menu item: '%@' action: %@", item.title, NSStringFromSelector(item.action));
-    }
+
     
     // Force update the menu
     [menuController update];
     
     // Show menu at selection
     CGRect selectedRect = [_textView firstRectForRange:_textView.selectedTextRange];
-    STLog(@"iOS SelectableText - Selected rect: %@", NSStringFromCGRect(selectedRect));
     
     if (!CGRectIsEmpty(selectedRect)) {
         // Convert rect to view coordinates
         CGRect targetRect = [_textView convertRect:selectedRect toView:_textView];
         [menuController setTargetRect:targetRect inView:_textView];
         [menuController setMenuVisible:YES animated:YES];
-        STLog(@"iOS SelectableText - Menu should now be visible with %lu items", (unsigned long)menuItems.count);
-    } else {
-        STLog(@"iOS SelectableText - Selected rect is empty, cannot show menu");
     }
 }
 
@@ -509,22 +450,18 @@ using namespace facebook::react;
 - (BOOL)canPerformAction:(SEL)action withSender:(id)sender
 {
     NSString *selectorName = NSStringFromSelector(action);
-    STLog(@"iOS SelectableText - canPerformAction called with: %@", selectorName);
     
     if ([selectorName hasPrefix:@"customAction_"] && [selectorName hasSuffix:@":"]) {
-        STLog(@"iOS SelectableText - canPerformAction: %@ -> YES", selectorName);
         return YES;
     }
     
     // Block ALL default system actions - we only want our custom ones
-    STLog(@"iOS SelectableText - Blocking default action: %@", selectorName);
     return NO;
 }
 
 // Override copy to prevent default behavior
 - (void)copy:(id)sender
 {
-    STLog(@"iOS SelectableText - copy: called, but blocked - should not happen");
     // Do nothing - this prevents the default copy action
 }
 
@@ -532,9 +469,7 @@ using namespace facebook::react;
 - (NSMethodSignature *)methodSignatureForSelector:(SEL)aSelector
 {
     NSString *selectorName = NSStringFromSelector(aSelector);
-    STLog(@"iOS SelectableText - methodSignatureForSelector called with: %@", selectorName);
     if ([selectorName hasPrefix:@"customAction_"] && [selectorName hasSuffix:@":"]) {
-        STLog(@"iOS SelectableText - Providing signature for custom action: %@", selectorName);
         return [NSMethodSignature signatureWithObjCTypes:"v@:@"];
     }
     return [super methodSignatureForSelector:aSelector];
@@ -543,12 +478,10 @@ using namespace facebook::react;
 - (void)forwardInvocation:(NSInvocation *)anInvocation
 {
     NSString *selectorName = NSStringFromSelector(anInvocation.selector);
-    STLog(@"iOS SelectableText - forwardInvocation called with selector: %@", selectorName);
     
     if ([selectorName hasPrefix:@"customAction_"] && [selectorName hasSuffix:@":"]) {
         // Extract cleaned option name from selector and find the original option
         NSString *cleanedOption = [selectorName substringWithRange:NSMakeRange(13, selectorName.length - 14)];
-        STLog(@"iOS SelectableText - Extracted cleaned option: '%@' from selector: '%@'", cleanedOption, selectorName);
         
         // Find the original option that matches this cleaned selector
         NSString *originalOption = nil;
@@ -561,13 +494,9 @@ using namespace facebook::react;
         }
         
         if (originalOption) {
-            STLog(@"iOS SelectableText - Found original option: '%@' for cleaned option: '%@'", originalOption, cleanedOption);
             [self handleMenuSelection:originalOption];
-        } else {
-            STLog(@"iOS SelectableText - Could not find original option for cleaned option: '%@'", cleanedOption);
         }
     } else {
-        STLog(@"iOS SelectableText - Selector doesn't match pattern, forwarding to super: %@", selectorName);
         [super forwardInvocation:anInvocation];
     }
 }
@@ -581,7 +510,6 @@ using namespace facebook::react;
         selectedText = [_textView.text substringWithRange:selectedRange];
     }
     
-    STLog(@"iOS SelectableText - handleMenuSelection called! Option: '%@'", selectedOption);
     
     // Clear selection
     _textView.selectedRange = NSMakeRange(0, 0);
@@ -591,14 +519,11 @@ using namespace facebook::react;
     
     // Emit event using Fabric eventEmitter
     if (auto eventEmitter = std::static_pointer_cast<const SelectableTextViewEventEmitter>(_eventEmitter)) {
-        STLog(@"iOS SelectableText - Emitting selection event via Fabric eventEmitter");
         SelectableTextViewEventEmitter::OnSelection selectionEvent = {
             .chosenOption = std::string([selectedOption UTF8String]),
             .highlightedText = std::string([selectedText UTF8String])
         };
         eventEmitter->onSelection(selectionEvent);
-    } else {
-        STLog(@"iOS SelectableText - No eventEmitter available");
     }
 }
 
