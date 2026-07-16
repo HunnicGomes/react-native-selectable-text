@@ -117,16 +117,24 @@ using namespace facebook::react;
         NSMutableArray<NSString *> *options = [[NSMutableArray alloc] init];
         NSMutableDictionary<NSString *, NSString *> *selectors = [[NSMutableDictionary alloc] init];
 
+        static NSRegularExpression *regex = nil;
+        static dispatch_once_t onceToken;
+        dispatch_once(&onceToken, ^{
+            regex = [NSRegularExpression regularExpressionWithPattern:@"[^a-zA-Z0-9_]"
+                                                              options:0
+                                                                error:nil];
+        });
+
         for (const auto& opt : _menuOptionsVector) {
             NSString *option = [NSString stringWithUTF8String:opt.c_str()];
             [options addObject:option];
 
             // Pre-compute the valid selector name (replace spaces and special chars with underscores)
-            NSString *selectorName = [[option stringByReplacingOccurrencesOfString:@" " withString:@"_"]
-                                                    stringByReplacingOccurrencesOfString:@"[^a-zA-Z0-9_]"
-                                                    withString:@"_"
-                                                    options:NSRegularExpressionSearch
-                                                    range:NSMakeRange(0, option.length)];
+            NSString *intermediate = [option stringByReplacingOccurrencesOfString:@" " withString:@"_"];
+            NSString *selectorName = [regex stringByReplacingMatchesInString:intermediate
+                                                                     options:0
+                                                                       range:NSMakeRange(0, intermediate.length)
+                                                                withTemplate:@"_"];
             selectors[option] = selectorName;
         }
         _menuOptions = options;
