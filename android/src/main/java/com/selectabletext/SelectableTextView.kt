@@ -41,15 +41,51 @@ class SelectableTextView : FrameLayout {
     }
   }
   
+  private val selectionActionModeCallback = object : ActionMode.Callback {
+    override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+      return true
+    }
+
+    override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
+      menu?.clear()
+      menuOptions.forEachIndexed { index, option ->
+        menu?.add(0, index, 0, option)
+      }
+      return true
+    }
+
+    override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
+      val tv = textView ?: return false
+      val selectionStart = tv.selectionStart
+      val selectionEnd = tv.selectionEnd
+      val selectedText = tv.text.toString().substring(selectionStart, selectionEnd)
+      val chosenOption = menuOptions[item?.itemId ?: 0]
+
+      // Send event to React Native
+      onSelectionEvent(chosenOption, selectedText)
+
+      mode?.finish()
+      return true
+    }
+
+    override fun onDestroyActionMode(mode: ActionMode?) {
+      // Called when action mode is destroyed
+    }
+  }
+
   private fun setupTextView() {
+    if (textView != null) return
+
     // Find the first TextView child
-    for (i in 0 until childCount) {
+    var i = 0
+    while (i < childCount) {
       val child = getChildAt(i)
       if (child is TextView) {
         textView = child
         setupSelectionCallback(child)
         break
       }
+      i++
     }
   }
   
@@ -59,36 +95,7 @@ class SelectableTextView : FrameLayout {
     if (!textView.isTextSelectable) {
       textView.setTextIsSelectable(true)
     }
-    textView.customSelectionActionModeCallback = object : ActionMode.Callback {
-      override fun onCreateActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-        return true
-      }
-      
-      override fun onPrepareActionMode(mode: ActionMode?, menu: Menu?): Boolean {
-        menu?.clear()
-        menuOptions.forEachIndexed { index, option ->
-          menu?.add(0, index, 0, option)
-        }
-        return true
-      }
-      
-      override fun onActionItemClicked(mode: ActionMode?, item: MenuItem?): Boolean {
-        val selectionStart = textView.selectionStart
-        val selectionEnd = textView.selectionEnd
-        val selectedText = textView.text.toString().substring(selectionStart, selectionEnd)
-        val chosenOption = menuOptions[item?.itemId ?: 0]
-        
-        // Send event to React Native
-        onSelectionEvent(chosenOption, selectedText)
-        
-        mode?.finish()
-        return true
-      }
-      
-      override fun onDestroyActionMode(mode: ActionMode?) {
-        // Called when action mode is destroyed
-      }
-    }
+    textView.customSelectionActionModeCallback = selectionActionModeCallback
   }
   
   private fun onSelectionEvent(chosenOption: String, highlightedText: String) {
