@@ -575,10 +575,7 @@ using namespace facebook::react;
         selectedText = [_textView.text substringWithRange:selectedRange];
     }
     
-    NSLog(@"iOS SelectableText - handleMenuSelection called!");
-    NSLog(@"iOS SelectableText - Selected: '%@' with option: '%@'", selectedText, selectedOption);
-    NSLog(@"iOS SelectableText - Selected range: location=%lu, length=%lu", 
-          (unsigned long)selectedRange.location, (unsigned long)selectedRange.length);
+    NSLog(@"iOS SelectableText - handleMenuSelection called! Option: '%@'", selectedOption);
     
     // Clear selection
     _textView.selectedRange = NSMakeRange(0, 0);
