@@ -59,6 +59,7 @@ using namespace facebook::react;
 @implementation SelectableTextView {
     std::vector<std::string> _menuOptionsVector;
     NSDictionary<NSString *, NSString *> *_menuOptionSelectors;
+    BOOL _isTextDirty;
 }
 
 + (ComponentDescriptorProvider)componentDescriptorProvider
@@ -72,6 +73,8 @@ using namespace facebook::react;
     
     static const auto defaultProps = std::make_shared<const SelectableTextViewProps>();
     _props = defaultProps;
+
+    _isTextDirty = YES;
 
     _textView = [[SelectableUITextView alloc] init];
     ((SelectableUITextView *)_textView).parentSelectableTextView = self;
@@ -139,6 +142,8 @@ using namespace facebook::react;
     }
 
     [super updateProps:props oldProps:oldProps];
+    _isTextDirty = YES;
+    [self setNeedsLayout];
 }
 
 - (void)mountChildComponentView:(UIView<RCTComponentViewProtocol> *)childComponentView index:(NSInteger)index
@@ -146,6 +151,9 @@ using namespace facebook::react;
     [super mountChildComponentView:childComponentView index:index];
     // Don't add child to _textView, let React Native handle the text rendering through normal flow
     // The text content will be accessible through the component hierarchy
+
+    _isTextDirty = YES;
+    [self setNeedsLayout];
 }
 
 // Recursively unhide all child views. This is necessary because we previously set
@@ -165,14 +173,20 @@ using namespace facebook::react;
     // Ensure all views are visible again before returning them to the recycling pool
     [self unhideAllViews:childComponentView];
     [super unmountChildComponentView:childComponentView index:index];
+
+    _isTextDirty = YES;
+    [self setNeedsLayout];
 }
 
 - (void)layoutSubviews
 {
     [super layoutSubviews];
     
-    // Extract text from child components and set it on the UITextView
-    [self updateTextViewContent];
+    if (_isTextDirty) {
+        // Extract text from child components and set it on the UITextView
+        [self updateTextViewContent];
+        _isTextDirty = NO;
+    }
 }
 
 - (void)updateTextViewContent
